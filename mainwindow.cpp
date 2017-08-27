@@ -22,6 +22,7 @@ MainWindow::MainWindow(QWidget *parent) :
     connect(ui->fitToWindowBtn,SIGNAL(clicked(bool)),this,SLOT(fitToWindow()));
     connect(ui->resetZoomBtn,SIGNAL(clicked(bool)),this,SLOT(resetZoom()));
     connect(ui->resetBtn,SIGNAL(clicked(bool)),this,SLOT(resetBtnClicked()));
+    connect(ui->saveAsBtn,SIGNAL(clicked(bool)),this,SLOT(saveAsBtnClicked()));
     connect(ui->detectSquaresBtn,SIGNAL(clicked(bool)),this,SLOT(detectSquaresBtnClicked()));
     connect(ui->removeMarkingBoxesBtn,SIGNAL(clicked(bool)),this,SLOT(removeAllGraphicsItemsExceptPixmapItemFromScene()));
     connect(ui->chooseColorsBtn,SIGNAL(clicked(bool)),this,SLOT(chooseColorsBtnClicked()));
@@ -32,6 +33,7 @@ MainWindow::MainWindow(QWidget *parent) :
     originalImageHeightM1=-1;
     originalImageData=0;
     pixelColorMap=0;
+    markings=new std::vector<QRect>();
     scene=new QGraphicsScene();
     pixmapItem=new QGraphicsPixmapItem();
     scene->addItem(pixmapItem);
@@ -59,6 +61,7 @@ MainWindow::~MainWindow()
     free(possibleSquareColors);
     delete colorSelectionDialog;
     delete dialog;
+    delete markings;
     delete ui;
 }
 
@@ -131,6 +134,7 @@ void MainWindow::resetZoom()
 void MainWindow::dialogFileSelected(QString path)
 {
     ui->pathBox->setText(path);
+    ui->loadBtn->click();
 }
 
 void MainWindow::resetBtnClicked()
@@ -147,6 +151,31 @@ void MainWindow::resetBtnClicked()
     fitToWindow();
 }
 
+void MainWindow::saveAsBtnClicked()
+{
+    if(image==0||image->isNull())
+        return;
+
+    QString path=QFileDialog::getSaveFileName(this,"Save as...",QStandardPaths::writableLocation(QStandardPaths::DocumentsLocation),"PNG image (*.png);;JPG image (*.jpg);;GIF image (*.gif);;Bitmap (*.bmp)");
+    if(path=="")
+        return;
+
+    if(markingsRemoved)
+        image->save(path,0,100);
+    else
+    {
+        QImage img=image->copy(0,0,originalImageWidth,originalImageHeight);
+        QPainter p(&img);
+        p.setPen(QPen(QColor(0xFFFF00FF)));
+
+        size_t markingCount=markings->size();
+
+        for(size_t i=0;i<markingCount;i++)
+            p.drawRect(markings->at(i));
+
+        img.save(path,0,100);
+    }
+}
 
 void MainWindow::detectSquaresBtnClicked()
 {
@@ -160,6 +189,7 @@ void MainWindow::detectSquaresBtnClicked()
     }
 
     removeAllGraphicsItemsExceptPixmapItemFromScene();
+    markingsRemoved=false; // Keep this below the removeAllGraphicsItemsExceptPixmapItemFromScene call!
     size_t imageSizeInBytes=originalImageWidth*originalImageHeight;
     free(pixelColorMap);
     pixelColorMap=(uint32_t*)calloc(imageSizeInBytes,sizeof(uint32_t));
@@ -201,9 +231,9 @@ void MainWindow::detectSquaresBtnClicked()
     const decimal_t minWidthHeightRatio=ui->minWidthHeightRatioBox->value();
     const decimal_t maxWidthHeightRatio=ui->maxWidthHeightRatioBox->value();
 
-    std::vector<QRect> markings;
     std::vector<int> maxAreas;
     int markingCount=0;
+    markings->clear();
 
     for(int y=0;y<originalImageHeight;y+=pixelStep)
     {
@@ -215,7 +245,7 @@ void MainWindow::detectSquaresBtnClicked()
             bool proceed=true;
             for(int i=0;i<markingCount;i++)
             {
-                QRect m=markings.at(i);
+                QRect m=markings->at(i);
                 if(m.contains(x,y))
                 {
                     proceed=false;
@@ -254,7 +284,7 @@ void MainWindow::detectSquaresBtnClicked()
 
             for(int i=0;i<markingCount;i++)
             {
-                QRect m=markings.at(i);
+                QRect m=markings->at(i);
                 QRect intersected=m.intersected(newRect);
                 int intersectedArea=intersected.width()*intersected.height();
                 if(intersectedArea>maxArea||intersectedArea>maxAreas.at(i))
@@ -266,7 +296,7 @@ void MainWindow::detectSquaresBtnClicked()
             if(!proceed)
                 continue;
 
-            markings.push_back(newRect);
+            markings->push_back(newRect);
             maxAreas.push_back(maxArea);
             markingCount++;
         }
@@ -274,7 +304,7 @@ void MainWindow::detectSquaresBtnClicked()
 
     for(int i=0;i<markingCount;i++)
     {
-        QRectF rect=markings.at(i);
+        QRectF rect=markings->at(i);
         QGraphicsRectItem *item=new QGraphicsRectItem(rect);
         item->setPen(QPen(QColor(0xFFFF00FF)));
         scene->addItem(item);
@@ -290,6 +320,7 @@ void MainWindow::detectSquaresBtnClicked()
 
 void MainWindow::removeAllGraphicsItemsExceptPixmapItemFromScene()
 {
+    markingsRemoved=true;
     QList<QGraphicsItem*> items=scene->items();
     int itemCount=items.count();
     for(int i=0;i<itemCount;i++)

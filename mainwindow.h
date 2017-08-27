@@ -47,6 +47,8 @@ public:
     uint32_t *originalImageData;
     uint32_t *pixelColorMap;
     bool showLargeImageWarning;
+    bool markingsRemoved;
+    std::vector<QRect> *markings;
 
     ColorSelectionDialog *colorSelectionDialog;
 
@@ -70,6 +72,7 @@ public slots:
     void resetZoom();
     void dialogFileSelected(QString path);
     void resetBtnClicked();
+    void saveAsBtnClicked();
     void detectSquaresBtnClicked();
     void removeAllGraphicsItemsExceptPixmapItemFromScene();
     void chooseColorsBtnClicked();
