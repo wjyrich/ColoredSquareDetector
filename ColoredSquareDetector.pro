@@ -30,3 +30,11 @@ HEADERS  += mainwindow.h \
 
 FORMS    += mainwindow.ui \
     colorselectiondialog.ui
+
+target.path = $$PREFIX/bin
+desktop.files = ColoredSquareDetector.desktop
+desktop.path = $$PREFIX/share/applications/
+icons.path = $$PREFIX/share/icons/hicolor/apps/
+icons.files = ColoredSquareDetector.png
+
+INSTALLS += target desktop icons

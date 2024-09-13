@@ -1,0 +1,11 @@
+[Desktop Entry]
+Categories=Accessibility;Qt;Utility;
+Exec=ColoredSquareDetector
+Name=ColoredSquareDetector
+Name[zh_CN]=ColoredSquareDetector
+Icon=ColoredSquareDetector
+StartupNotify=false
+Terminal=false
+Type=Application
+GenericName=ColoredSquareDetector
+Version=1.0
